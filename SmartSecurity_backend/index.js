@@ -1,5 +1,6 @@
 import express from 'express'
 import dotenv from 'dotenv'
+import cookieParser from "cookie-parser";
 import {connectDB} from './config/db.js'
 import authroutes from './routes/auth.route.js'
 
@@ -9,7 +10,11 @@ dotenv.config()
 
 //json accepted
 app.use(express.json())
+//set cookie parser
+app.use(cookieParser())
 
+//define port
+const PORT=process.env.PORT || 3000
 //mongodb connection request
 connectDB()
 
@@ -22,6 +27,6 @@ app.get('/',(req,res)=>{
 })
 
 //server start listening
-app.listen(process.env.PORT,()=>{
-    console.log(`App running on port ${process.env.PORT}`)
+app.listen(PORT,()=>{
+    console.log(`App running on port ${PORT}`)
 })
