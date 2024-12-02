@@ -1,5 +1,6 @@
 import express from 'express'
 import dotenv from 'dotenv'
+import cors from 'cors'
 import cookieParser from "cookie-parser";
 import {connectDB} from './config/db.js'
 import authroutes from './routes/auth.route.js'
@@ -7,7 +8,8 @@ import authroutes from './routes/auth.route.js'
 const app=express()
 //dotenv configuration done
 dotenv.config()
-
+//cors set up
+app.use(cors({ origin: "http://localhost:5173", credentials: true }));
 //json accepted
 app.use(express.json())
 //set cookie parser

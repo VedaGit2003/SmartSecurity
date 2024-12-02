@@ -112,11 +112,10 @@ export const userLogoutController = async (req, res) => {
 export const verificationController = async (req, res) => {
     try {
         //accessing email and code
-        const { email, code } = req.body;
+        const { code } = req.body;
 
         //verify the code
         const user = await UserModel.findOne({
-            email: email,
             verificationToken: code,
             verificationTokenExpiresAt: { $gt: Date.now() }
         })
@@ -251,3 +250,6 @@ export const checkAuthController=async(req,res)=>{
         })
     }
 }
+
+
+
