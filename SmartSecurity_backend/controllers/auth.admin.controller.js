@@ -79,7 +79,7 @@ export const adminLoginController = async (req, res) => {
         }
 
         if (!user.isApproved) {
-            return res.status(402).json({ success: false, message: "You are not approved by the admin yet" })
+            return res.status(402).json({ success: false, message: "You are not approved by the super admin yet" })
         }
 
         generateJwtSetCookie(res, user._id)
