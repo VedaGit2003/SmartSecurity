@@ -1,6 +1,7 @@
 import { UserModel } from "../models/user.model.js"
 import bcryptjs from 'bcryptjs'
 import crypto from 'crypto'
+import mongoose from "mongoose";
 import { generateJwtSetCookie } from "../utils/jwtgenerator.js";
 import { sendPasswordResetEmail, sendResetSuccessfullEmail, sendVerificationEmail, sendWelcomeMail } from "../mailtrap_config/emails.js";
 
@@ -27,9 +28,9 @@ export const adminSignupController = async (req, res) => {
             name,
             role: "admin",
             last_login: Date.now(),
-            isVerified:true,
+            isVerified: true,
             isApproved: false,
-            verificationToken:undefined,
+            verificationToken: undefined,
             verificationTokenExpiresAt: undefined
         })
         //save the user
@@ -103,16 +104,54 @@ export const adminLoginController = async (req, res) => {
 }
 
 
-
-export const adminResponseController=async(req,res)=>{
-    try{
+//get moderator and user details
+export const adminResponseController = async (req, res) => {
+    try {
         const moderatorsAndUsers = await UserModel.find({ role: { $in: ['user', 'moderator'] } });
-        if(!moderatorsAndUsers){
-            return res.status(401).json({success:false,message:"no user available"})
+        if (!moderatorsAndUsers) {
+            return res.status(401).json({ success: false, message: "no user available" })
         }
-        return res.status(200).json({success:true,message:"user getting successfull",moderatorsAndUsers})
-    }catch(error){
+        return res.status(200).json({ success: true, message: "user getting successfull", moderatorsAndUsers })
+    } catch (error) {
         console.log(error)
-        return res.status(404).json({success:false,message:"Network error"})
+        return res.status(404).json({ success: false, message: "Network error" })
+    }
+}
+
+//update moderator or user approval
+export const updateUserModerator = async (req, res) => {
+    try {
+        const { userId } = req.params
+        const { isApproved } = req.body
+
+        // Validate `userId`
+        if (!mongoose.Types.ObjectId.isValid(userId)) {
+            return res.status(500).json({ success: false, message: "Invalid user ID format." });
+        }
+
+        //checking the input 
+        if (typeof isApproved !== 'boolean') {
+            return res.status(400).json({ success: false, message: "Invalid 'isApproved' value. It must be a boolean." });
+        }
+
+        const user = await UserModel.findById(userId)
+        //check if user is valid
+        if (!user) {
+            return res.status(401).json({ success: false, message: "user is not available please provide valid id" })
+        }
+        if (user.role == 'admin') {
+            return res.status(402).json({ success: false, message: 'You donot have the parmission to approve to an admin' })
+        }
+        //approve the user
+        const updatedUser = await UserModel.findByIdAndUpdate(userId, { isApproved }, { new: true })
+        //return response
+        return res.status(200).json({
+            success: true,
+            message: 'User approval updated successfully',
+            data: updatedUser
+        })
+    } catch (error) {
+        console.log(error)
+        return res.status(404).json({ success: false, message: 'Error while updating approval' })
     }
 }

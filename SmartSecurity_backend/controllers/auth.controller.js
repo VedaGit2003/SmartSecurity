@@ -1,6 +1,7 @@
 import { UserModel } from "../models/user.model.js"
 import bcryptjs from 'bcryptjs'
 import crypto from 'crypto'
+import mongoose from "mongoose";
 import { generateJwtSetCookie } from "../utils/jwtgenerator.js";
 import { sendPasswordResetEmail, sendResetSuccessfullEmail, sendVerificationEmail, sendWelcomeMail } from "../mailtrap_config/emails.js";
 
@@ -154,33 +155,33 @@ export const verificationController = async (req, res) => {
 
 //forgot password
 
-export const forgotPasswordController=async(req,res)=>{
-    try{
-      const {email}=req.body;
-      //checking if user exist or not
-      const user=await UserModel.findOne({email})
+export const forgotPasswordController = async (req, res) => {
+    try {
+        const { email } = req.body;
+        //checking if user exist or not
+        const user = await UserModel.findOne({ email })
 
-      if(!user){
-        return res.status(400).json({ success: false, message: "User not found" });
-      }
-      //generate reset token
-      const resetToken=crypto.randomBytes(20).toString("hex")
-      const resetTokenExpiresAt=Date.now()+1*60*60*1000;
+        if (!user) {
+            return res.status(400).json({ success: false, message: "User not found" });
+        }
+        //generate reset token
+        const resetToken = crypto.randomBytes(20).toString("hex")
+        const resetTokenExpiresAt = Date.now() + 1 * 60 * 60 * 1000;
 
-      user.resetPasswordToken=resetToken;
-      user.resetPasswordExpiresAt=resetTokenExpiresAt;
+        user.resetPasswordToken = resetToken;
+        user.resetPasswordExpiresAt = resetTokenExpiresAt;
 
-      await user.save()
+        await user.save()
 
-      //send email
-      await sendPasswordResetEmail(user.email,`${process.env.FRONTEND_URL}/reset-password/${resetToken}`)
+        //send email
+        await sendPasswordResetEmail(user.email, `${process.env.FRONTEND_URL}/reset-password/${resetToken}`)
 
-      res.status(200).json({
-        success:true,
-        message:'Password reset link sent to your email'
-      })
+        res.status(200).json({
+            success: true,
+            message: 'Password reset link sent to your email'
+        })
 
-    }catch(error){
+    } catch (error) {
         console.log(error)
         return res.status(404).json({
             success: false,
@@ -190,61 +191,112 @@ export const forgotPasswordController=async(req,res)=>{
 }
 
 //resetPassword Controller
-export const resetPasswordController=async(req,res)=>{
-    try{
+export const resetPasswordController = async (req, res) => {
+    try {
         //accessing the token and password from frontend
-       const {token}=req.params
-       const {password}=req.body
+        const { token } = req.params
+        const { password } = req.body
 
-       //check for valid token
-       const  user=await UserModel.findOne({
-        resetPasswordToken:token,
-        resetPasswordExpiresAt:{$gt:Date.now()},
-       })
+        //check for valid token
+        const user = await UserModel.findOne({
+            resetPasswordToken: token,
+            resetPasswordExpiresAt: { $gt: Date.now() },
+        })
 
-       if (!user){
-        return res.status(400).json({ success: false, message: "Invalid or expired reset token" });
-       }
+        if (!user) {
+            return res.status(400).json({ success: false, message: "Invalid or expired reset token" });
+        }
 
-       //update password
-       const hashedPassword=await bcryptjs.hash(password,10);
+        //update password
+        const hashedPassword = await bcryptjs.hash(password, 10);
 
-       user.password=hashedPassword;
-       user.resetPasswordToken=undefined;
-       user.resetPasswordExpiresAt=undefined;
-       //save the changes
-       await user.save();
-      //sending successfull email
-       await sendResetSuccessfullEmail(user.email)
-       
-       //sending response
-       res.status(200).json({
-        success:true,
-        message:"Password reset successful"
-       })
-    
-    }catch(error){
+        user.password = hashedPassword;
+        user.resetPasswordToken = undefined;
+        user.resetPasswordExpiresAt = undefined;
+        //save the changes
+        await user.save();
+        //sending successfull email
+        await sendResetSuccessfullEmail(user.email)
+
+        //sending response
+        res.status(200).json({
+            success: true,
+            message: "Password reset successful"
+        })
+
+    } catch (error) {
         console.error(error)
         return res.status(404).json({
-            success:false,
+            success: false,
             message: 'Network error in reseting password'
         })
     }
 }
 
-export const checkAuthController=async(req,res)=>{
-    try{
-    const user=await UserModel.findById(req.userId).select("-password")
-    if(!user){
-        return res.status(400).json({
-            success:false,message:"user not found"
+export const checkAuthController = async (req, res) => {
+    try {
+        const user = await UserModel.findById(req.userId).select("-password")
+        if (!user) {
+            return res.status(400).json({
+                success: false, message: "user not found"
+            })
+        }
+        res.status(200).json({
+            success: true, user
+        })
+    } catch (error) {
+        console.log("Error while checking authorization", error)
+        res.status(404).json({
+            success: false, message: error.message
         })
     }
-    res.status(200).json({
-        success:true,user
-    })
-    }catch(error){
-        console.log("Error while checking authorization",error)
+}
+
+
+//get user detail
+export const mydetails = async (req, res) => {
+    try {
+        const userDetails = await UserModel.findById(req.userId).select("-password")
+        if (!userDetails) {
+            return res.status(400).json({
+                success: false, message: "user not found"
+            })
+        }
+        //returning the response
+        res.status(200).json({
+            success: true,message:'getting details successfull', userDetails
+        })
+
+
+    } catch (error) {
+        console.log("Error while getting details", error)
+        res.status(404).json({
+            success: false, message: error.message
+        })
+    }
+}
+
+//update user details
+export const updateMydetails = async (req, res) => {
+    try {
+        const user = await UserModel.findById(req.userId).select("-password")
+        const {name}=req.body
+        if (!user) {
+            return res.status(400).json({
+                success: false, message: "user not found"
+            })
+        }
+
+        //update details
+        const updatedUser=await UserModel.findByIdAndUpdate(req.userId,{name},{new:true})
+        //returning the response
+        res.status(200).json({
+            success: true, message:'updated name successfully' ,updatedUser
+        })
+
+
+    } catch (error) {
+        console.log("Error while updating details", error)
         res.status(404).json({
             success: false, message: error.message
         })

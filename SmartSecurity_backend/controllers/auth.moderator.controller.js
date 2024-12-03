@@ -1,6 +1,7 @@
 import { UserModel } from "../models/user.model.js"
 import bcryptjs from 'bcryptjs'
 import crypto from 'crypto'
+import mongoose from "mongoose";
 import { generateJwtSetCookie } from "../utils/jwtgenerator.js";
 import { sendPasswordResetEmail, sendResetSuccessfullEmail, sendVerificationEmail, sendWelcomeMail } from "../mailtrap_config/emails.js";
 
@@ -26,9 +27,9 @@ export const moderatorSignupController = async (req, res) => {
             name,
             role: "moderator",
             last_login: Date.now(),
-            isVerified:true,
+            isVerified: true,
             isApproved: false,
-            verificationToken:undefined,
+            verificationToken: undefined,
             verificationTokenExpiresAt: undefined
         })
         //save the user
@@ -106,15 +107,55 @@ export const moderatorLoginController = async (req, res) => {
 
 
 //geting all users
-export const moderatorResponseController=async(req,res)=>{
-    try{
-        const users=await UserModel.find({role:'user'})
-        if(!users){
-            return res.status(401).json({success:false,message:"no user available"})
+export const moderatorResponseController = async (req, res) => {
+    try {
+        const users = await UserModel.find({ role: 'user' })
+        if (!users) {
+            return res.status(401).json({ success: false, message: "no user available" })
         }
-        return res.status(200).json({success:true,message:"user getting successfull",users})
-    }catch(error){
+        return res.status(200).json({ success: true, message: "user getting successfull", users })
+    } catch (error) {
         console.log(error)
-        return res.status(404).json({success:false,message:"Network error"})
+        return res.status(404).json({ success: false, message: "Network error" })
+    }
+}
+
+//update verification of an user
+export const updateUser = async (req, res) => {
+    try {
+        const { userId } = req.params
+        const { isVerified } = req.body
+
+        //check if usetId format is falid
+        if (!mongoose.Types.ObjectId.isValid(userId)) {
+            return res.status(500).json({ success: false, message: "Invalid user ID format." });
+        }
+        if (typeof isVerified != 'boolean') {
+            return res.status(400).json({ success: false, message: "type of verification field must be true/false" });
+        }
+
+        const user = await UserModel.findById(userId)
+        //check if user exist or not
+        if (!user) {
+            return res.status(401).json({ success: false, message: "user not found" })
+        }
+
+        //check if user role is user or not
+        if (user.role !== 'user') {
+            return res.status(402).json({ success: false, message: 'You donot have the parmission to verify to moderator or admin' })
+        }
+        // update the user 
+        const updatedUser = await UserModel.findByIdAndUpdate(userId, { isVerified }, { new: true })
+
+        //return response
+        return res.status(200).json({
+            success: true,
+            message: 'User verification updated successfully',
+            data: updatedUser
+        })
+
+    } catch (error) {
+        console.log(error)
+        return res.status(404).json({ success: false, message: "Network error" })
     }
 }
